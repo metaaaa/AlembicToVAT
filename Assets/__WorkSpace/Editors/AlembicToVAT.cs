@@ -10,6 +10,7 @@ public class AlembicToVAT : EditorWindow
 {
     public AlembicStreamPlayer alembic = null;
     public int samplingRate = 20;
+    public float adjugstTime = -0.04166667f;
     public ComputeShader infoTexGen;
     public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
     public Shader playShader;
@@ -34,6 +35,8 @@ public class AlembicToVAT : EditorWindow
     private string _folderPath = "";
     private string _subFolderPath = "";
 
+    private float _startTime = 0f;
+
     private readonly int[] _textureSize = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
     private const int MaxTextureSize = 8192;
 
@@ -50,6 +53,7 @@ public class AlembicToVAT : EditorWindow
         {
             alembic = (AlembicStreamPlayer)EditorGUILayout.ObjectField("alembic", alembic, typeof(AlembicStreamPlayer), true);
             samplingRate = EditorGUILayout.IntField("samplingRate", samplingRate);
+            adjugstTime = EditorGUILayout.FloatField("adjugstTime", adjugstTime);
             infoTexGen = (ComputeShader)EditorGUILayout.ObjectField("infoTexGen", infoTexGen, typeof(ComputeShader), true);
             folderName = EditorGUILayout.TextField("folderName", folderName);
             playShader = (Shader)EditorGUILayout.ObjectField("playShader", playShader, typeof(Shader), true);
@@ -62,6 +66,8 @@ public class AlembicToVAT : EditorWindow
     {
         // validate
         if (!InputValidate()) return;
+
+        _startTime = alembic.StartTime + adjugstTime;
 
         // check VAT Type
         _topologyType = GetVATType();
@@ -76,7 +82,7 @@ public class AlembicToVAT : EditorWindow
         SaveAssets(texTuple.posTex, texTuple.normTex);
 
         // 初期状態に戻す
-        alembic.UpdateImmediately(alembic.StartTime);
+        alembic.UpdateImmediately(_startTime);
     }
 
     private bool InputValidate()
@@ -96,7 +102,7 @@ public class AlembicToVAT : EditorWindow
 
         for (var frame = 0; frame < frameCount; frame++)
         {
-            alembic.UpdateImmediately(alembic.StartTime + dt * frame);
+            alembic.UpdateImmediately(_startTime + dt * frame);
 
             int triangleCount = 0;
             foreach (var meshFilter in _meshFilters)
@@ -110,7 +116,7 @@ public class AlembicToVAT : EditorWindow
         }
         var type = _maxTriangleCount == _minTriangleCount ? TopologyType.Soft : TopologyType.Liquid;
         // 初期状態に戻す
-        alembic.UpdateImmediately(alembic.StartTime);
+        alembic.UpdateImmediately(_startTime);
         return type;
     }
 
@@ -262,7 +268,7 @@ public class AlembicToVAT : EditorWindow
             progress = (float)frame / (float)frames;
             string progressText = ((frame % 2) == 0) ? "処理中 ₍₍(ง˘ω˘)ว⁾⁾" : "処理中 ₍₍(ว˘ω˘)ง⁾⁾";
             bool isCancel = EditorUtility.DisplayCancelableProgressBar("AlembicToVAT", progressText, progress);
-            alembic.UpdateImmediately(alembic.StartTime + dt * frame);
+            alembic.UpdateImmediately(_startTime + dt * frame);
             infoList.AddRange(GetVertInfos(maxVertCount));
 
             if (isCancel)
