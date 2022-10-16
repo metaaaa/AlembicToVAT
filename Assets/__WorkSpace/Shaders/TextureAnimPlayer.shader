@@ -62,19 +62,13 @@
 				float x = (vid % texWidth) * ts.x;
 				float baseY = floor(t / blockHeihgt) * blockHeihgt;
 				float rowDiff = floor(vid / texWidth) * ts.y;
-				float y = baseY + rowDiff;
-				if(blockHeihgt + baseY > 1.0){
-					y = rowDiff;
-				}
+				float y = (blockHeihgt + baseY > 1.0) ? rowDiff : baseY + rowDiff;
 				float4 pos = tex2Dlod(_PosTex, float4(x, y, 0, 0));
 				float3 normal = tex2Dlod(_NmlTex, float4(x, y, 0, 0));
 
 #ifdef IS_FLUID
 #else
-				float nextY = y + blockHeihgt;
-				if(nextY - rowDiff + blockHeihgt > 1.0){
-					nextY = y;
-				}
+				float nextY = (y - rowDiff + blockHeihgt * 2.0 > 1.0) ? y : y + blockHeihgt;
 				float4 pos2 = tex2Dlod(_PosTex, float4(x, nextY, 0, 0));
 				float3 normal2 = tex2Dlod(_NmlTex, float4(x, nextY, 0, 0));
 
