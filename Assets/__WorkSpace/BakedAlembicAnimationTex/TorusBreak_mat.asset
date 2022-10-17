@@ -9,7 +9,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: TorusBreak_mat
   m_Shader: {fileID: 4800000, guid: 4063efef392692c45b6ce0c36b4e4baf, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: ANIM_LOOP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -33,9 +33,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _Cull: 2
-    - _DT: 0
+    - _DT: 9.97
     - _IsFluid: 0
     - _Length: 9.958333
-    - _Loop: 0
+    - _Loop: 1
+    - _TexHeight: 199
     - _VertCount: 7385
     m_Colors: []

@@ -33,9 +33,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _Cull: 2
-    - _DT: 0
+    - _DT: -7.23
     - _IsFluid: 0
     - _Length: 10.375
     - _Loop: 1
+    - _TexHeight: 1
     - _VertCount: 4352
     m_Colors: []
