@@ -1,12 +1,5 @@
 {
   "dependencies": {
-    "com.metaaaa.meta_tools": {
-      "version": "https://github.com/metaaaa/meta_tools.git?path=Assets/MetaTools",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {},
-      "hash": "8d0ed66645d0c504b885a55aa57f470c38d76fc2"
-    },
     "com.unity.collab-proxy": {
       "version": "1.6.0",
       "depth": 0,
