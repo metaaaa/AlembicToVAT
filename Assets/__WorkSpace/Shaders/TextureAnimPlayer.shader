@@ -50,25 +50,27 @@
 			
 			v2f vert (appdata v, uint vid : SV_VertexID)
 			{
-				uint texWidth = 1.0 / ts.x;
-				uint rowNum = _VertCount / texWidth + 1;
+				half4 color = 0;
+				uint texWidth = ts.z;
+				uint rowNum = _VertCount * ts.x + 1;
 				float t = 0;
 #if ANIM_LOOP
 				t = frac(_Time.y / _Length);
 #else
 				t = frac( _DT / _Length);
 #endif
-				float blockHeihgt = ts.y * rowNum;
+				float tsy = 1.0 / (ts.w -0.1);
+				float blockHeihgt = tsy * rowNum;
 				float x = (vid % texWidth) * ts.x;
 				float baseY = floor(t / blockHeihgt) * blockHeihgt;
-				float rowDiff = floor(vid / texWidth) * ts.y;
-				float y = (blockHeihgt + baseY > 1.0) ? rowDiff : baseY + rowDiff;
+				float rowDiff = floor(vid * ts.x) * tsy;
+				float y = baseY + rowDiff;
 				float4 pos = tex2Dlod(_PosTex, float4(x, y, 0, 0));
 				float3 normal = tex2Dlod(_NmlTex, float4(x, y, 0, 0));
 
 #ifdef IS_FLUID
 #else
-				float nextY = (y - rowDiff + blockHeihgt * 2.0 > 1.0) ? y : y + blockHeihgt;
+				float nextY = (y - rowDiff + blockHeihgt >= 1.0) ? y : y + blockHeihgt;
 				float4 pos2 = tex2Dlod(_PosTex, float4(x, nextY, 0, 0));
 				float3 normal2 = tex2Dlod(_NmlTex, float4(x, nextY, 0, 0));
 

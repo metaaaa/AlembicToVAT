@@ -8,9 +8,23 @@ using UnityEngine.Formats.Alembic.Importer;
 
 public class AlembicToVAT : EditorWindow
 {
+    public enum MaxTextureWitdh
+    {
+        w32 = 32,
+        w64 = 64,
+        w128 = 128,
+        w256 = 256,
+        w512 = 512,
+        w1024 = 1024,
+        w2048 = 2048,
+        w4096 = 4096,
+        w8192 = 8192
+    }
+
     public AlembicStreamPlayer alembic = null;
     public int samplingRate = 20;
     public float adjugstTime = -0.04166667f;
+    public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
     public ComputeShader infoTexGen;
     public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
     public Shader playShader;
@@ -20,6 +34,7 @@ public class AlembicToVAT : EditorWindow
         Soft,
         Liquid,
     }
+
 
     public struct VertInfo
     {
@@ -38,7 +53,6 @@ public class AlembicToVAT : EditorWindow
     private float _startTime = 0f;
 
     private readonly int[] _textureSize = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-    private const int MaxTextureSize = 8192;
 
     [MenuItem("Custom/AlembicToVAT")]
     static void Create()
@@ -54,6 +68,7 @@ public class AlembicToVAT : EditorWindow
             alembic = (AlembicStreamPlayer)EditorGUILayout.ObjectField("alembic", alembic, typeof(AlembicStreamPlayer), true);
             samplingRate = EditorGUILayout.IntField("samplingRate", samplingRate);
             adjugstTime = EditorGUILayout.FloatField("adjugstTime", adjugstTime);
+            maxTextureWitdh = (MaxTextureWitdh)EditorGUILayout.EnumPopup("maxTextureWitdh", maxTextureWitdh);
             infoTexGen = (ComputeShader)EditorGUILayout.ObjectField("infoTexGen", infoTexGen, typeof(ComputeShader), true);
             folderName = EditorGUILayout.TextField("folderName", folderName);
             playShader = (Shader)EditorGUILayout.ObjectField("playShader", playShader, typeof(Shader), true);
@@ -95,12 +110,12 @@ public class AlembicToVAT : EditorWindow
         _maxTriangleCount = 0;
         _minTriangleCount = 10000000;
 
-        int frameCount = Mathf.NextPowerOfTwo((int)(alembic.Duration * samplingRate));
-        var dt = alembic.Duration / frameCount;
+        int frames = ((int)(alembic.Duration * samplingRate));
+        var dt = alembic.Duration / frames;
 
         _meshFilters = alembic.gameObject.GetComponentsInChildren<MeshFilter>();
 
-        for (var frame = 0; frame < frameCount; frame++)
+        for (var frame = 0; frame < frames; frame++)
         {
             alembic.UpdateImmediately(_startTime + dt * frame);
 
@@ -230,12 +245,14 @@ public class AlembicToVAT : EditorWindow
         var size = new Vector2Int();
         int maxVertCount = GetMaxVertexCount();
 
+        int maxTextureWitdh = (int)this.maxTextureWitdh;
+
         var x = Mathf.NextPowerOfTwo(maxVertCount);
-        x = x > MaxTextureSize ? MaxTextureSize : x;
-        var y = Mathf.NextPowerOfTwo((int)(alembic.Duration * samplingRate) * ((int)((maxVertCount - 1) / MaxTextureSize) + 1));
+        x = x > maxTextureWitdh ? maxTextureWitdh : x;
+        var y = ((int)(alembic.Duration * samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1));
         size.x = x;
         size.y = y;
-        if (y > MaxTextureSize)
+        if (y > maxTextureWitdh)
         {
             Debug.LogError("data size over");
         }
@@ -245,7 +262,7 @@ public class AlembicToVAT : EditorWindow
     private (Texture2D posTex, Texture2D normTex) BakeTextures()
     {
         var maxVertCount = GetMaxVertexCount();
-        var frames = Mathf.NextPowerOfTwo((int)(alembic.Duration * samplingRate));
+        var frames = ((int)(alembic.Duration * samplingRate));
         var texSize = GetTextureSize();
         var dt = alembic.Duration / frames;
 
@@ -320,8 +337,8 @@ public class AlembicToVAT : EditorWindow
 
         posTex.filterMode = FilterMode.Point;
         normTex.filterMode = FilterMode.Point;
-        posTex.wrapMode = TextureWrapMode.Clamp;
-        normTex.wrapMode = TextureWrapMode.Clamp;
+        posTex.wrapMode = TextureWrapMode.Repeat;
+        normTex.wrapMode = TextureWrapMode.Repeat;
 
         FolderInit();
 

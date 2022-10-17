@@ -11,14 +11,13 @@ StructuredBuffer<MeshInfo> Info;
 int MaxVertexCount;
 int TextureWidth;
 
-[numthreads(8,8,1)]
+[numthreads(8,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    int rows = ((float)MaxVertexCount / (float)TextureWidth - 0.00001) + 1;
-    int frame = id.y / rows;
+    int rows = (int)(MaxVertexCount /TextureWidth) + 1;
+    int frame = (int)(id.y / rows);
     int rowNum = id.y % rows;
 	int index = frame * MaxVertexCount + rowNum * TextureWidth + id.x;
-	int vid = id.x + (TextureWidth * rowNum);
 
 	MeshInfo info = Info[index];
 
