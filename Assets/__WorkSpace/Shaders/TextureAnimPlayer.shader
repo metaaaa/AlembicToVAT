@@ -25,6 +25,7 @@
 			#pragma vertex vert
 			#pragma fragment frag
 			#pragma multi_compile ___ ANIM_LOOP
+			#pragma multi_compile_instancing
 			#pragma shader_feature _ IS_FLUID
 
 			#include "UnityCG.cginc"
