@@ -419,17 +419,17 @@ public class AlembicToVAT : EditorWindow
         return infoList;
     }
 
-    private string GetFolderPath()
+    private string InitializeFolder()
     {
         var folderPath = Path.Combine("Assets", folderName);
         if (!AssetDatabase.IsValidFolder(folderPath))
             AssetDatabase.CreateFolder("Assets", folderName);
 
         var subFolder = alembic.gameObject.name;
-        var result = Path.Combine(folderPath, subFolder);
-        if (!AssetDatabase.IsValidFolder(result))
+        var path = Path.Combine(folderPath, subFolder);
+        if (!AssetDatabase.IsValidFolder(path))
             AssetDatabase.CreateFolder(folderPath, subFolder);
-        return result;
+        return path;
     }
 
     private void SaveAssets(Texture2D posTex, Texture2D normTex, Mesh mesh)
@@ -454,7 +454,7 @@ public class AlembicToVAT : EditorWindow
         go.AddComponent<MeshRenderer>().sharedMaterial = mat;
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
 
-        var path = GetFolderPath();
+        var path = InitializeFolder();
 
         AssetDatabase.CreateAsset(posTex, Path.Combine(path, posTex.name + ".asset"));
         AssetDatabase.CreateAsset(normTex, Path.Combine(path, normTex.name + ".asset"));
