@@ -1,4 +1,6 @@
-﻿using System;
+﻿#if UNITY_EDITOR
+
+using System;
 using System.Linq;
 using System.IO;
 using System.Collections.Generic;
@@ -21,14 +23,6 @@ public class AlembicToVAT : EditorWindow
         w8192 = 8192
     }
 
-    public AlembicStreamPlayer alembic = null;
-    public int samplingRate = 20;
-    public float adjugstTime = -0.04166667f;
-    public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
-    public ComputeShader infoTexGen;
-    public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
-    public Shader playShader;
-
     public enum TopologyType
     {
         Soft,
@@ -42,22 +36,25 @@ public class AlembicToVAT : EditorWindow
         public Vector3 normal;
     }
 
+    // Properties
+    public AlembicStreamPlayer alembic = null;
+    public int samplingRate = 20;
+    public float adjugstTime = -0.04166667f;
+    public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
+    public ComputeShader infoTexGen;
+    public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
+    public Shader playShader = null;
+
     private TopologyType _topologyType = TopologyType.Soft;
-    private int _maxTriangleCount = 0;
-    private int _minTriangleCount = 10000000;
     private MeshFilter[] _meshFilters = null;
-    private Mesh _mesh = null;
-    private string _folderPath = "";
-    private string _subFolderPath = "";
-
     private float _startTime = 0f;
+    private int _maxTriangleCount = 0;
+    private int _minTriangleCount = Int32.MaxValue;
 
-    private readonly int[] _textureSize = { 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 
     [MenuItem("Custom/AlembicToVAT")]
     static void Create()
     {
-        // 生成
         GetWindow<AlembicToVAT>("AlembicToVAT");
     }
 
@@ -82,19 +79,22 @@ public class AlembicToVAT : EditorWindow
         // validate
         if (!InputValidate()) return;
 
+        // initialize
         _startTime = alembic.StartTime + adjugstTime;
+        _meshFilters = alembic.gameObject.GetComponentsInChildren<MeshFilter>();
 
         // check VAT Type
-        _topologyType = GetVATType();
+        _topologyType = GetTopologyType();
 
         // bake mesh
-        _mesh = BakeMesh();
+        var mesh = BakeMesh();
 
         // bake texture
-        var texTuple = BakeTextures();
+        var texTuple = BakeTextures(mesh);
+        if(texTuple.posTex == null || texTuple.normTex == null) return;
 
         // create assets
-        SaveAssets(texTuple.posTex, texTuple.normTex);
+        SaveAssets(texTuple.posTex, texTuple.normTex, mesh);
 
         // 初期状態に戻す
         alembic.UpdateImmediately(_startTime);
@@ -102,18 +102,32 @@ public class AlembicToVAT : EditorWindow
 
     private bool InputValidate()
     {
-        return true;
+        bool valid = true;
+        if(alembic == null)
+        {
+            Debug.LogError("alembicが設定されていません");
+            valid = false;
+        }
+        if(infoTexGen == null)
+        {
+            Debug.LogError("infoTexGenが設定されていません");
+            valid = false;
+        }
+        if(playShader == null)
+        {
+            Debug.LogError("playShaderが設定されていません");
+            valid = false;
+        }
+        return valid;
     }
 
-    private TopologyType GetVATType()
+    private TopologyType GetTopologyType()
     {
         _maxTriangleCount = 0;
-        _minTriangleCount = 10000000;
+        _minTriangleCount = Int32.MaxValue;
 
         int frames = ((int)(alembic.Duration * samplingRate));
         var dt = alembic.Duration / frames;
-
-        _meshFilters = alembic.gameObject.GetComponentsInChildren<MeshFilter>();
 
         for (var frame = 0; frame < frames; frame++)
         {
@@ -259,7 +273,7 @@ public class AlembicToVAT : EditorWindow
         return size;
     }
 
-    private (Texture2D posTex, Texture2D normTex) BakeTextures()
+    private (Texture2D posTex, Texture2D normTex) BakeTextures(Mesh mesh)
     {
         var maxVertCount = GetMaxVertexCount();
         var frames = ((int)(alembic.Duration * samplingRate));
@@ -283,7 +297,7 @@ public class AlembicToVAT : EditorWindow
         for (var frame = 0; frame < frames; frame++)
         {
             progress = (float)frame / (float)frames;
-            string progressText = ((frame % 2) == 0) ? "処理中 ₍₍(ง˘ω˘)ว⁾⁾" : "処理中 ₍₍(ว˘ω˘)ง⁾⁾";
+            string progressText = ((frame % 2) == 0) ? "processing ₍₍(ง˘ω˘)ว⁾⁾" : "processing ₍₍(ว˘ω˘)ง⁾⁾";
             bool isCancel = EditorUtility.DisplayCancelableProgressBar("AlembicToVAT", progressText, progress);
             alembic.UpdateImmediately(_startTime + dt * frame);
             infoList.AddRange(GetVertInfos(maxVertCount));
@@ -291,6 +305,7 @@ public class AlembicToVAT : EditorWindow
             if (isCancel)
             {
                 EditorUtility.ClearProgressBar();
+                Debug.Log("Canceled");
                 return (null, null);
             }
         }
@@ -310,7 +325,7 @@ public class AlembicToVAT : EditorWindow
         {
             maxBounds = minBounds * -1;
         }
-        _mesh.bounds = new Bounds(){max = maxBounds, min = minBounds};
+        mesh.bounds = new Bounds(){max = maxBounds, min = minBounds};
 
         var buffer = new ComputeBuffer(infoList.Count, System.Runtime.InteropServices.Marshal.SizeOf(typeof(VertInfo)));
         buffer.SetData(infoList.ToArray());
@@ -339,11 +354,6 @@ public class AlembicToVAT : EditorWindow
         normTex.filterMode = FilterMode.Point;
         posTex.wrapMode = TextureWrapMode.Repeat;
         normTex.wrapMode = TextureWrapMode.Repeat;
-
-        FolderInit();
-
-        AssetDatabase.CreateAsset(posTex, Path.Combine(_subFolderPath, pRt.name + ".asset"));
-        AssetDatabase.CreateAsset(normTex, Path.Combine(_subFolderPath, nRt.name + ".asset"));
 
         EditorUtility.ClearProgressBar();
 
@@ -409,26 +419,27 @@ public class AlembicToVAT : EditorWindow
         return infoList;
     }
 
-    private void FolderInit()
+    private string GetFolderPath()
     {
-        _folderPath = Path.Combine("Assets", folderName);
-        if (!AssetDatabase.IsValidFolder(_folderPath))
+        var folderPath = Path.Combine("Assets", folderName);
+        if (!AssetDatabase.IsValidFolder(folderPath))
             AssetDatabase.CreateFolder("Assets", folderName);
 
-        var subFolder = name;
-        _subFolderPath = Path.Combine(_folderPath, subFolder);
-        if (!AssetDatabase.IsValidFolder(_subFolderPath))
-            AssetDatabase.CreateFolder(_folderPath, subFolder);
+        var subFolder = alembic.gameObject.name;
+        var result = Path.Combine(folderPath, subFolder);
+        if (!AssetDatabase.IsValidFolder(result))
+            AssetDatabase.CreateFolder(folderPath, subFolder);
+        return result;
     }
 
-    private void SaveAssets(Texture2D posTex, Texture2D normTex)
+    private void SaveAssets(Texture2D posTex, Texture2D normTex, Mesh mesh)
     {
         var mat = new Material(playShader);
         mat.SetTexture("_MainTex", _meshFilters.First().gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
         mat.SetTexture("_PosTex", posTex);
         mat.SetTexture("_NmlTex", normTex);
         mat.SetFloat("_Length", alembic.Duration);
-        mat.SetInt("_VertCount", _mesh.vertexCount);
+        mat.SetInt("_VertCount", mesh.vertexCount);
         mat.SetFloat("_IsFluid", Convert.ToInt32(_topologyType == TopologyType.Liquid));
         if(_topologyType == TopologyType.Liquid)
         {
@@ -441,11 +452,16 @@ public class AlembicToVAT : EditorWindow
 
         var go = new GameObject(alembic.gameObject.name);
         go.AddComponent<MeshRenderer>().sharedMaterial = mat;
-        go.AddComponent<MeshFilter>().sharedMesh = _mesh;
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
 
-        AssetDatabase.CreateAsset(mat, Path.Combine(_subFolderPath, string.Format("{0}_mat.asset", alembic.gameObject.name)));
-        AssetDatabase.CreateAsset(_mesh, Path.Combine(_subFolderPath, string.Format("{0}_mesh.asset", alembic.gameObject.name)));
-        var prefabObj = PrefabUtility.SaveAsPrefabAssetAndConnect(go, Path.Combine(_subFolderPath, go.name + ".prefab").Replace("\\", "/"), InteractionMode.UserAction);
+        var path = GetFolderPath();
+
+        AssetDatabase.CreateAsset(posTex, Path.Combine(path, posTex.name + ".asset"));
+        AssetDatabase.CreateAsset(normTex, Path.Combine(path, normTex.name + ".asset"));
+
+        AssetDatabase.CreateAsset(mat, Path.Combine(path, string.Format("{0}_mat.asset", alembic.gameObject.name)));
+        AssetDatabase.CreateAsset(mesh, Path.Combine(path, string.Format("{0}_mesh.asset", alembic.gameObject.name)));
+        var prefabObj = PrefabUtility.SaveAsPrefabAssetAndConnect(go, Path.Combine(path, go.name + ".prefab").Replace("\\", "/"), InteractionMode.UserAction);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -480,7 +496,10 @@ public class AlembicToVAT : EditorWindow
         RenderTexture.active = rt;
         tex2d.ReadPixels(rect, 0, 0);
         RenderTexture.active = null;
+        tex2d.name = rt.name;
         return tex2d;
     }
 
 }
+
+#endif

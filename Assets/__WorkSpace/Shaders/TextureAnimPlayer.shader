@@ -1,4 +1,4 @@
-﻿Shader "Unlit/TextureAnimPlayer"
+﻿Shader "AlembicToVAT/TextureAnimPlayer"
 {
 	Properties
 	{
@@ -36,7 +36,6 @@
 			{
 				float2 uv : TEXCOORD0;
 
-				// SPS-I対応
                 UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -46,7 +45,6 @@
 				float3 normal : TEXCOORD1;
 				float4 vertex : SV_POSITION;
 
-				// SPS-I対応
                 UNITY_VERTEX_OUTPUT_STEREO
 			};
 
@@ -57,7 +55,6 @@
 			
 			v2f vert (appdata v, uint vid : SV_VertexID)
 			{
-				half4 color = 0;
 				uint texWidth = ts.z;
 				uint rowNum = _VertCount * ts.x + 1;
 				float t = 0;
@@ -66,9 +63,9 @@
 #else
 				t = frac( _DT / _Length);
 #endif
+				float x = (vid % texWidth) * ts.x;
 				float tsy = 1.0 / (ts.w -0.1);
 				float blockHeihgt = tsy * rowNum;
-				float x = (vid % texWidth) * ts.x;
 				float baseY = floor(t / blockHeihgt) * blockHeihgt;
 				float rowDiff = floor(vid * ts.x) * tsy;
 				float y = baseY + rowDiff;
@@ -86,7 +83,6 @@
 				normal = lerp(normal, normal2, p);
 #endif
 				v2f o;
-                // SPS-I対応
 				UNITY_INITIALIZE_OUTPUT(v2f, o);
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);

@@ -1,6 +1,7 @@
 ﻿#pragma kernel CSMain
 
-struct MeshInfo{
+struct MeshInfo
+{
 	float3 position;
 	float3 normal;
 };
