@@ -9,9 +9,9 @@ X軸は頂点ID、Y軸はフレーム 左下(0, 0)がスタート<br>
 sRGBHalf <br>
 トポロジーが変化するものも対応 <br>
 
-## install
-```
+## UPM install
 現在インストールできるけど正常に動作しない
+```
 https://github.com/metaaaa/AlembicToVAT.git?path=Assets/AlembicToVAT
 ```
 
