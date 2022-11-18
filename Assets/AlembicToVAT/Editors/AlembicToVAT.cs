@@ -44,15 +44,16 @@
         public int samplingRate = 20;
         public float adjugstTime = -0.04166667f;
         public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
-        public ComputeShader infoTexGen;
         public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
-        public Shader playShader = null;
+        public string shaderName = "AlembicToVAT/TextureAnimPlayer";
 
         private TopologyType _topologyType = TopologyType.Soft;
         private MeshFilter[] _meshFilters = null;
         private float _startTime = 0f;
         private int _maxTriangleCount = 0;
         private int _minTriangleCount = Int32.MaxValue;
+        private ComputeShader _infoTexGen;
+        private Shader _playShader = null;
 
 
         [MenuItem("Custom/AlembicToVAT")]
@@ -69,9 +70,9 @@
                 samplingRate = EditorGUILayout.IntField("samplingRate", samplingRate);
                 adjugstTime = EditorGUILayout.FloatField("adjugstTime", adjugstTime);
                 maxTextureWitdh = (MaxTextureWitdh)EditorGUILayout.EnumPopup("maxTextureWitdh", maxTextureWitdh);
-                infoTexGen = (ComputeShader)EditorGUILayout.ObjectField("infoTexGen", infoTexGen, typeof(ComputeShader), true);
+                // infoTexGen = (ComputeShader)EditorGUILayout.ObjectField("infoTexGen", infoTexGen, typeof(ComputeShader), true);
                 folderName = EditorGUILayout.TextField("folderName", folderName);
-                playShader = (Shader)EditorGUILayout.ObjectField("playShader", playShader, typeof(Shader), true);
+                shaderName = EditorGUILayout.TextField("shaderName", shaderName);
                 if (GUILayout.Button("process")) Make();
             }
             catch (System.FormatException) { }
@@ -79,8 +80,13 @@
 
         private void Make()
         {
+
+            _infoTexGen = (ComputeShader)Resources.Load("AlembicInfoToTexture");
+            _playShader = Shader.Find(shaderName);
+
             // validate
             if (!InputValidate()) return;
+
 
             // initialize
             _startTime = alembic.StartTime + adjugstTime;
@@ -111,12 +117,12 @@
                 Debug.LogError("alembicが設定されていません");
                 valid = false;
             }
-            if (infoTexGen == null)
+            if (_infoTexGen == null)
             {
                 Debug.LogError("infoTexGenが設定されていません");
                 valid = false;
             }
-            if (playShader == null)
+            if (_playShader == null)
             {
                 Debug.LogError("playShaderが設定されていません");
                 valid = false;
@@ -335,16 +341,16 @@
 
             int rows = (int)((float)maxVertCount / (float)texSize.x - 0.00001f) + 1;
 
-            var kernel = infoTexGen.FindKernel("CSMain");
+            var kernel = _infoTexGen.FindKernel("CSMain");
             uint x, y, z;
-            infoTexGen.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
+            _infoTexGen.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
 
-            infoTexGen.SetInt("MaxVertexCount", maxVertCount);
-            infoTexGen.SetInt("TextureWidth", texSize.x);
-            infoTexGen.SetBuffer(kernel, "Info", buffer);
-            infoTexGen.SetTexture(kernel, "OutPosition", pRt);
-            infoTexGen.SetTexture(kernel, "OutNormal", nRt);
-            infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1), (frames / (int)y) * rows + 1, 1);
+            _infoTexGen.SetInt("MaxVertexCount", maxVertCount);
+            _infoTexGen.SetInt("TextureWidth", texSize.x);
+            _infoTexGen.SetBuffer(kernel, "Info", buffer);
+            _infoTexGen.SetTexture(kernel, "OutPosition", pRt);
+            _infoTexGen.SetTexture(kernel, "OutNormal", nRt);
+            _infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1), (frames / (int)y) * rows + 1, 1);
 
             buffer.Release();
 
@@ -437,7 +443,7 @@
 
         private void SaveAssets(Texture2D posTex, Texture2D normTex, Mesh mesh)
         {
-            var mat = new Material(playShader);
+            var mat = new Material(_playShader);
             mat.SetTexture("_MainTex", _meshFilters.First().gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
             mat.SetTexture("_PosTex", posTex);
             mat.SetTexture("_NmlTex", normTex);
