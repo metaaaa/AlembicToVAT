@@ -70,7 +70,6 @@
                 samplingRate = EditorGUILayout.IntField("samplingRate", samplingRate);
                 adjugstTime = EditorGUILayout.FloatField("adjugstTime", adjugstTime);
                 maxTextureWitdh = (MaxTextureWitdh)EditorGUILayout.EnumPopup("maxTextureWitdh", maxTextureWitdh);
-                // infoTexGen = (ComputeShader)EditorGUILayout.ObjectField("infoTexGen", infoTexGen, typeof(ComputeShader), true);
                 folderName = EditorGUILayout.TextField("folderName", folderName);
                 shaderName = EditorGUILayout.TextField("shaderName", shaderName);
                 if (GUILayout.Button("process")) Make();
@@ -432,7 +431,16 @@
         {
             var folderPath = Path.Combine("Assets", folderName);
             if (!AssetDatabase.IsValidFolder(folderPath))
-                AssetDatabase.CreateFolder("Assets", folderName);
+            {
+                var folderNameSplit = folderName.Split('/');
+                var prevPath = "Assets";
+                foreach (var item in folderNameSplit)
+                {
+                    var tmpPath = Path.Combine(prevPath, item);
+                    if (!AssetDatabase.IsValidFolder(tmpPath)) AssetDatabase.CreateFolder(prevPath, item);
+                    prevPath = tmpPath;
+                }
+            }
 
             var subFolder = alembic.gameObject.name;
             var path = Path.Combine(folderPath, subFolder);
