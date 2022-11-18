@@ -3,6 +3,14 @@
 ## 概要
 UnityでAlembicからVATを生成するエディタ拡張です
 
+## 使い方
+* AlembicをSceneに配置する
+* ToolBarで以下を選択してエディタ拡張Windowを開く
+```
+metaaa -> AlembicToVAT 
+```
+* Alembicやその他項目を設定しProcessボタンを押す
+
 ## フォーマット
 X軸は頂点ID、Y軸はフレーム 左下(0, 0)がスタート<br>
 頂点数がテクスチャの幅を超える場合改行<br>
@@ -10,7 +18,6 @@ sRGBHalf <br>
 トポロジーが変化するものも対応 <br>
 
 ## UPM install
-現在インストールできるけど正常に動作しない
 ```
 https://github.com/metaaaa/AlembicToVAT.git?path=Assets/AlembicToVAT
 ```
