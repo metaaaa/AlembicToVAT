@@ -44,7 +44,7 @@
         public int samplingRate = 20;
         public float adjugstTime = -0.04166667f;
         public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
-        public string folderName = "__WorkSpace/BakedAlembicAnimationTex";
+        public string folderName = "AlembicToVAT/Results";
         public string shaderName = "AlembicToVAT/TextureAnimPlayer";
 
         private TopologyType _topologyType = TopologyType.Soft;
