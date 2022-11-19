@@ -1,8 +1,5 @@
 ﻿namespace AlembicToVAT
 {
-
-#if UNITY_EDITOR
-
     using System;
     using System.Linq;
     using System.IO;
@@ -516,9 +513,5 @@
             tex2d.name = rt.name;
             return tex2d;
         }
-
     }
-
-#endif
-
 }
