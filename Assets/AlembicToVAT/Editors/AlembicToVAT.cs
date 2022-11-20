@@ -268,7 +268,7 @@
 
             var x = Mathf.NextPowerOfTwo(maxVertCount);
             x = x > maxTextureWitdh ? maxTextureWitdh : x;
-            var y = ((int)(alembic.Duration * samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1));
+            var y = ((int)(alembic.Duration * samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1)) + 1;
             size.x = x;
             size.y = y;
             if (y > maxTextureWitdh)
@@ -299,7 +299,7 @@
 
             var infoList = new List<VertInfo>(texSize.y * maxVertCount);
             float progress = 0f;
-            for (var frame = 0; frame < frames; frame++)
+            for (var frame = 0; frame <= frames; frame++)
             {
                 progress = (float)frame / (float)frames;
                 string progressText = ((frame % 2) == 0) ? "processing ₍₍(ง˘ω˘)ว⁾⁾" : "processing ₍₍(ว˘ω˘)ง⁾⁾";
@@ -335,7 +335,7 @@
             var buffer = new ComputeBuffer(infoList.Count, System.Runtime.InteropServices.Marshal.SizeOf(typeof(VertInfo)));
             buffer.SetData(infoList.ToArray());
 
-            int rows = (int)((float)maxVertCount / (float)texSize.x - 0.00001f) + 1;
+            int rows = (maxVertCount-1) / texSize.x  + 1;
 
             var kernel = _infoTexGen.FindKernel("CSMain");
             uint x, y, z;
@@ -346,7 +346,7 @@
             _infoTexGen.SetBuffer(kernel, "Info", buffer);
             _infoTexGen.SetTexture(kernel, "OutPosition", pRt);
             _infoTexGen.SetTexture(kernel, "OutNormal", nRt);
-            _infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1), (frames / (int)y) * rows + 1, 1);
+            _infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1), frames * rows + 1, 1);
 
             buffer.Release();
 
