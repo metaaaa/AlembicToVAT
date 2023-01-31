@@ -2,92 +2,40 @@
 {
     using System;
     using System.Linq;
-    using System.IO;
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEditor;
     using UnityEngine.Formats.Alembic.Importer;
 
-    public class AlembicToVAT : EditorWindow
+    public class AlembicToVAT
     {
-        public enum MaxTextureWitdh
-        {
-            w32 = 32,
-            w64 = 64,
-            w128 = 128,
-            w256 = 256,
-            w512 = 512,
-            w1024 = 1024,
-            w2048 = 2048,
-            w4096 = 4096,
-            w8192 = 8192
-        }
-
-        public enum TopologyType
-        {
-            Soft,
-            Liquid,
-        }
-
-
-        public struct VertInfo
-        {
-            public Vector3 position;
-            public Vector3 normal;
-        }
-
         // Properties
-        public AlembicStreamPlayer alembic = null;
-        public int samplingRate = 20;
-        public float adjugstTime = -0.04166667f;
-        public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
-        public string folderName = "AlembicToVAT/Results";
-        public string shaderName = "AlembicToVAT/TextureAnimPlayer";
-
+        private readonly AlembicStreamPlayer _alembic = null;
+        private readonly int _samplingRate = 20;
+        private readonly float _adjugstTime = -0.04166667f;
+        private readonly MaxTextureWitdh _maxTextureWitdh = MaxTextureWitdh.w8192;
+        private readonly ComputeShader _infoTexGen = null;
+        private readonly float _startTime = 0f;
+        private readonly MeshFilter[] _meshFilters = null;
         private TopologyType _topologyType = TopologyType.Soft;
-        private MeshFilter[] _meshFilters = null;
-        private float _startTime = 0f;
         private int _maxTriangleCount = 0;
         private int _minTriangleCount = Int32.MaxValue;
-        private ComputeShader _infoTexGen;
-        private Shader _playShader = null;
 
-
-        [MenuItem("metaaa/AlembicToVAT")]
-        static void Create()
+        public AlembicToVAT(AlembicStreamPlayer alembic, MaxTextureWitdh maxTextureWitdh,
+            int samplingRate = 20, float adjugstTime = -0.04166667f)
         {
-            GetWindow<AlembicToVAT>("AlembicToVAT");
-        }
-
-        private void OnGUI()
-        {
-            try
-            {
-                alembic = (AlembicStreamPlayer)EditorGUILayout.ObjectField("alembic", alembic, typeof(AlembicStreamPlayer), true);
-                samplingRate = EditorGUILayout.IntField("samplingRate", samplingRate);
-                adjugstTime = EditorGUILayout.FloatField("adjugstTime", adjugstTime);
-                maxTextureWitdh = (MaxTextureWitdh)EditorGUILayout.EnumPopup("maxTextureWitdh", maxTextureWitdh);
-                folderName = EditorGUILayout.TextField("folderName", folderName);
-                shaderName = EditorGUILayout.TextField("shaderName", shaderName);
-                if (GUILayout.Button("process")) Make();
-            }
-            catch (System.FormatException) { }
-        }
-
-        private void Make()
-        {
+            _alembic = alembic;
+            _samplingRate = samplingRate;
+            _adjugstTime = adjugstTime;
+            _maxTextureWitdh = maxTextureWitdh;
 
             _infoTexGen = (ComputeShader)Resources.Load("AlembicInfoToTexture");
-            _playShader = Shader.Find(shaderName);
+            _startTime = _alembic.StartTime + _adjugstTime;
+            _meshFilters = _alembic.gameObject.GetComponentsInChildren<MeshFilter>();
+        }
 
-            // validate
-            if (!InputValidate()) return;
-
-
-            // initialize
-            _startTime = alembic.StartTime + adjugstTime;
-            _meshFilters = alembic.gameObject.GetComponentsInChildren<MeshFilter>();
-
+        public ConvertResult Exec()
+        {
             // check VAT Type
             _topologyType = GetTopologyType();
 
@@ -96,34 +44,13 @@
 
             // bake texture
             var texTuple = BakeTextures(mesh);
-            if (texTuple.posTex == null || texTuple.normTex == null) return;
-
-            // create assets
-            SaveAssets(texTuple.posTex, texTuple.normTex, mesh);
-
+            if (texTuple.posTex == null || texTuple.normTex == null) return null;
             // reset
-            alembic.UpdateImmediately(_startTime);
-        }
+            _alembic.UpdateImmediately(_startTime);
 
-        private bool InputValidate()
-        {
-            bool valid = true;
-            if (alembic == null)
-            {
-                Debug.LogError("alembicが設定されていません");
-                valid = false;
-            }
-            if (_infoTexGen == null)
-            {
-                Debug.LogError("infoTexGenが設定されていません");
-                valid = false;
-            }
-            if (_playShader == null)
-            {
-                Debug.LogError("playShaderが設定されていません");
-                valid = false;
-            }
-            return valid;
+            var mainTex = _meshFilters.First().gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
+
+            return new ConvertResult(texTuple.posTex, texTuple.normTex, mainTex, mesh, _topologyType);
         }
 
         private TopologyType GetTopologyType()
@@ -131,12 +58,12 @@
             _maxTriangleCount = 0;
             _minTriangleCount = Int32.MaxValue;
 
-            int frames = ((int)(alembic.Duration * samplingRate));
-            var dt = alembic.Duration / frames;
+            int frames = ((int)(_alembic.Duration * _samplingRate));
+            var dt = _alembic.Duration / frames;
 
             for (var frame = 0; frame < frames; frame++)
             {
-                alembic.UpdateImmediately(_startTime + dt * frame);
+                _alembic.UpdateImmediately(_startTime + dt * frame);
 
                 int triangleCount = 0;
                 foreach (var meshFilter in _meshFilters)
@@ -150,7 +77,7 @@
             }
             var type = _maxTriangleCount == _minTriangleCount ? TopologyType.Soft : TopologyType.Liquid;
             // reset
-            alembic.UpdateImmediately(_startTime);
+            _alembic.UpdateImmediately(_startTime);
             return type;
         }
 
@@ -264,11 +191,11 @@
             var size = new Vector2Int();
             int maxVertCount = GetMaxVertexCount();
 
-            int maxTextureWitdh = (int)this.maxTextureWitdh;
+            int maxTextureWitdh = (int)this._maxTextureWitdh;
 
             var x = Mathf.NextPowerOfTwo(maxVertCount);
             x = x > maxTextureWitdh ? maxTextureWitdh : x;
-            var y = ((int)(alembic.Duration * samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1)) + 1;
+            var y = ((int)(_alembic.Duration * _samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1)) + 1;
             size.x = x;
             size.y = y;
             if (y > maxTextureWitdh)
@@ -281,14 +208,14 @@
         private (Texture2D posTex, Texture2D normTex) BakeTextures(Mesh mesh)
         {
             var maxVertCount = GetMaxVertexCount();
-            var frames = ((int)(alembic.Duration * samplingRate));
+            var frames = (int)(_alembic.Duration * _samplingRate);
             var texSize = GetTextureSize();
-            var dt = alembic.Duration / frames;
+            var dt = _alembic.Duration / frames;
 
             var pRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf);
-            pRt.name = string.Format("{0}.posTex", alembic.gameObject.name);
+            pRt.name = string.Format("{0}.posTex", _alembic.gameObject.name);
             var nRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf);
-            nRt.name = string.Format("{0}.normTex", alembic.gameObject.name);
+            nRt.name = string.Format("{0}.normTex", _alembic.gameObject.name);
             foreach (var rt in new[] { pRt, nRt })
             {
                 rt.enableRandomWrite = true;
@@ -304,7 +231,7 @@
                 progress = (float)frame / (float)frames;
                 string progressText = ((frame % 2) == 0) ? "processing ₍₍(ง˘ω˘)ว⁾⁾" : "processing ₍₍(ว˘ω˘)ง⁾⁾";
                 bool isCancel = EditorUtility.DisplayCancelableProgressBar("AlembicToVAT", progressText, progress);
-                alembic.UpdateImmediately(_startTime + dt * frame);
+                _alembic.UpdateImmediately(_startTime + dt * frame);
                 infoList.AddRange(GetVertInfos(maxVertCount));
 
                 if (isCancel)
@@ -335,7 +262,7 @@
             var buffer = new ComputeBuffer(infoList.Count, System.Runtime.InteropServices.Marshal.SizeOf(typeof(VertInfo)));
             buffer.SetData(infoList.ToArray());
 
-            int rows = (maxVertCount-1) / texSize.x  + 1;
+            int rows = (maxVertCount - 1) / texSize.x + 1;
 
             var kernel = _infoTexGen.FindKernel("CSMain");
             uint x, y, z;
@@ -424,62 +351,6 @@
             return infoList;
         }
 
-        private string InitializeFolder()
-        {
-            var folderPath = Path.Combine("Assets", folderName);
-            if (!AssetDatabase.IsValidFolder(folderPath))
-            {
-                var folderNameSplit = folderName.Split('/');
-                var prevPath = "Assets";
-                foreach (var item in folderNameSplit)
-                {
-                    var tmpPath = Path.Combine(prevPath, item);
-                    if (!AssetDatabase.IsValidFolder(tmpPath)) AssetDatabase.CreateFolder(prevPath, item);
-                    prevPath = tmpPath;
-                }
-            }
-
-            var subFolder = alembic.gameObject.name;
-            var path = Path.Combine(folderPath, subFolder);
-            if (!AssetDatabase.IsValidFolder(path))
-                AssetDatabase.CreateFolder(folderPath, subFolder);
-            return path;
-        }
-
-        private void SaveAssets(Texture2D posTex, Texture2D normTex, Mesh mesh)
-        {
-            var mat = new Material(_playShader);
-            mat.SetTexture("_MainTex", _meshFilters.First().gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture);
-            mat.SetTexture("_PosTex", posTex);
-            mat.SetTexture("_NmlTex", normTex);
-            mat.SetFloat("_Length", alembic.Duration);
-            mat.SetInt("_VertCount", mesh.vertexCount);
-            mat.SetFloat("_IsFluid", Convert.ToInt32(_topologyType == TopologyType.Liquid));
-            if (_topologyType == TopologyType.Liquid)
-            {
-                mat.EnableKeyword("IS_FLUID");
-            }
-            else
-            {
-                mat.DisableKeyword("IS_FLUID");
-            }
-
-            var go = new GameObject(alembic.gameObject.name);
-            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-
-            var path = InitializeFolder();
-
-            AssetDatabase.CreateAsset(posTex, Path.Combine(path, posTex.name + ".asset"));
-            AssetDatabase.CreateAsset(normTex, Path.Combine(path, normTex.name + ".asset"));
-
-            AssetDatabase.CreateAsset(mat, Path.Combine(path, string.Format("{0}_mat.asset", alembic.gameObject.name)));
-            AssetDatabase.CreateAsset(mesh, Path.Combine(path, string.Format("{0}_mesh.asset", alembic.gameObject.name)));
-            var prefabObj = PrefabUtility.SaveAsPrefabAssetAndConnect(go, Path.Combine(path, go.name + ".prefab").Replace("\\", "/"), InteractionMode.UserAction);
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-        }
 
         private Texture2D RenderTextureToTexture2D(RenderTexture rt)
         {
