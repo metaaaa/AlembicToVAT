@@ -1,0 +1,27 @@
+﻿#pragma kernel CSMain
+
+struct MeshInfo
+{
+	float3 position;
+	float3 normal;
+};
+
+RWTexture2D<float4> OutPosition;
+RWTexture2D<float4> OutNormal;
+StructuredBuffer<MeshInfo> Info;
+uint MaxVertexCount;
+uint TextureWidth;
+
+[numthreads(8,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint rows = (uint)((MaxVertexCount-1) /TextureWidth) + 1;
+    int frame = (int)(id.y / rows);
+    int rowNum = id.y % rows;
+	int index = frame * MaxVertexCount + rowNum * TextureWidth + id.x;
+
+	MeshInfo info = Info[index];
+
+	OutPosition[id.xy] = float4(info.position, 1.0);
+	OutNormal[id.xy] = float4(info.normal, 1.0);
+}
