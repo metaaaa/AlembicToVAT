@@ -20,6 +20,8 @@
         private TopologyType _topologyType = TopologyType.Soft;
         private int _maxTriangleCount = 0;
         private int _minTriangleCount = Int32.MaxValue;
+        private List<MeshPartInfo> _meshParts = new List<MeshPartInfo>();
+        private Vector3 _rootScale = Vector3.one;
 
         public AlembicToVAT(AlembicStreamPlayer alembic, MaxTextureWitdh maxTextureWitdh,
             int samplingRate = 20, float adjugstTime = -0.04166667f)
@@ -32,6 +34,16 @@
             _infoTexGen = (ComputeShader)Resources.Load("AlembicInfoToTexture");
             _startTime = _alembic.StartTime + _adjugstTime;
             _meshFilters = _alembic.gameObject.GetComponentsInChildren<MeshFilter>();
+
+            _rootScale = _alembic.transform.localScale;
+
+            foreach (var meshFilter in _meshFilters)
+            {
+                var meshPart = new MeshPartInfo();
+                meshPart.meshFilter = meshFilter;
+                meshPart.parentTrans = meshFilter.gameObject.transform.parent;
+                _meshParts.Add(meshPart);
+            }
         }
 
         public ConvertResult Exec()
@@ -134,7 +146,6 @@
                 int verticesOffset = 0;
                 foreach (var meshFilter in _meshFilters)
                 {
-                    float random = UnityEngine.Random.value;
                     var sharedMesh = meshFilter.sharedMesh;
                     var vertCount = sharedMesh.vertices.Length;
                     for (int j = 0; j < vertCount; j++)
@@ -156,6 +167,8 @@
                     verticesOffset += vertCount;
                 }
             }
+
+            vertices = vertices.Select(x => Vector3.Scale(x, _rootScale)).ToArray();
 
             bakedMesh.vertices = vertices;
             if (hasUVs)
@@ -257,6 +270,8 @@
             {
                 maxBounds = minBounds * -1;
             }
+            maxBounds = Vector3.Scale(maxBounds, _rootScale);
+            minBounds = Vector3.Scale(minBounds, _rootScale);
             mesh.bounds = new Bounds() { max = maxBounds, min = minBounds };
 
             var buffer = new ComputeBuffer(infoList.Count, System.Runtime.InteropServices.Marshal.SizeOf(typeof(VertInfo)));
@@ -270,6 +285,7 @@
 
             _infoTexGen.SetInt("MaxVertexCount", maxVertCount);
             _infoTexGen.SetInt("TextureWidth", texSize.x);
+            _infoTexGen.SetVector("RootScale", _rootScale);
             _infoTexGen.SetBuffer(kernel, "Info", buffer);
             _infoTexGen.SetTexture(kernel, "OutPosition", pRt);
             _infoTexGen.SetTexture(kernel, "OutNormal", nRt);
@@ -301,10 +317,18 @@
 
             if (_topologyType == TopologyType.Soft)
             {
-                foreach (var mesh in meshes)
+                foreach (var meshPart in _meshParts)
                 {
-                    vertices.AddRange(mesh.vertices);
-                    normals.AddRange(mesh.normals);
+                    var mesh = meshPart.meshFilter.sharedMesh;
+                    var meshParentTrans = meshPart.parentTrans;
+                    var meshParentLocalScale = meshParentTrans.localScale;
+                    var meshVerts = mesh.vertices
+                                    .Select(x => Vector3.Scale(x, meshParentTrans.localScale))
+                                    .Select(x => meshParentTrans.localRotation * x)
+                                    .Select(x => meshParentTrans.localPosition + x);
+                    var meshNorms = mesh.normals.Select(x => meshParentTrans.localRotation * x);
+                    vertices.AddRange(meshVerts);
+                    normals.AddRange(meshNorms);
                 }
 
                 infoList.AddRange(Enumerable.Range(0, maxVertCount)

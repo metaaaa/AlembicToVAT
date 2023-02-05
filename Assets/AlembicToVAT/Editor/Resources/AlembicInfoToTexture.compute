@@ -11,6 +11,7 @@ RWTexture2D<float4> OutNormal;
 StructuredBuffer<MeshInfo> Info;
 uint MaxVertexCount;
 uint TextureWidth;
+float3 RootScale;
 
 [numthreads(8,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -22,6 +23,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 	MeshInfo info = Info[index];
 
-	OutPosition[id.xy] = float4(info.position, 1.0);
+	OutPosition[id.xy] = float4(info.position * RootScale, 1.0);
 	OutNormal[id.xy] = float4(info.normal, 1.0);
 }

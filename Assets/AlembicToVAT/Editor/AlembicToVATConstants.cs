@@ -27,6 +27,12 @@
         public Vector3 normal;
     }
 
+    public struct MeshPartInfo
+    {
+        public MeshFilter meshFilter;
+        public Transform parentTrans;
+    }
+
     public class ConvertResult
     {
         public readonly Texture2D posTex;
