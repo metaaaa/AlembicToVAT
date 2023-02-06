@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "com.metaaaa.meta_tools": {
+      "version": "https://github.com/metaaaa/meta_tools.git?path=Assets/MetaTools",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "5228e9116d0bd48f6bb462e4ef293e5c781453e4"
+    },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
       "depth": 1,
