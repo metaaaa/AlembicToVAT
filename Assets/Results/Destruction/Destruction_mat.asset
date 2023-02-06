@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Destruction_mat
+  m_Shader: {fileID: 4800000, guid: 9d076c0d499f47546920c87099a9bdf8, type: 3}
+  m_ShaderKeywords: ANIM_LOOP
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NmlTex:
+        m_Texture: {fileID: 2800000, guid: b9f2d8ca3c3acbb4096ece81a728745f, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PosTex:
+        m_Texture: {fileID: 2800000, guid: 939bf95ec04ff5b44b5a38eb8d7e7930, type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+    - _Cull: 2
+    - _DT: 0
+    - _IsFluid: 0
+    - _Length: 4.9583335
+    - _Loop: 1
+    - _VertCount: 5435
+    m_Colors: []
