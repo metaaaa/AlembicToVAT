@@ -7,7 +7,7 @@ UnityでAlembicからVATを生成するエディタ拡張です
 * AlembicをSceneに配置する
 * ToolBarで以下を選択してエディタ拡張Windowを開く
 ```
-metaaa -> AlembicToVAT 
+AlembicToVAT -> AlembicToVAT 
 ```
 * Alembicやその他項目を設定しProcessボタンを押す
 

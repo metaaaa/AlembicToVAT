@@ -18,7 +18,7 @@
         private Shader _playShader = null;
 
 
-        [MenuItem("metaaa/AlembicToVAT")]
+        [MenuItem("AlembicToVAT/AlembicToVAT")]
         static void Create()
         {
             GetWindow<AlembicToVATGUI>("AlembicToVAT");
