@@ -208,7 +208,9 @@
 
             var x = Mathf.NextPowerOfTwo(maxVertCount);
             x = x > maxTextureWitdh ? maxTextureWitdh : x;
-            var y = ((int)(_alembic.Duration * _samplingRate) * ((int)((maxVertCount - 1) / maxTextureWitdh) + 1)) + 1;
+            var blockSize = ((int)((maxVertCount - 0.1f) / maxTextureWitdh) + 1);
+            var frames = Mathf.FloorToInt(_alembic.Duration * _samplingRate) + 1;
+            var y = frames * blockSize;
             size.x = x;
             size.y = y;
             if (y > maxTextureWitdh)
@@ -221,7 +223,7 @@
         private (Texture2D posTex, Texture2D normTex) BakeTextures(Mesh mesh)
         {
             var maxVertCount = GetMaxVertexCount();
-            var frames = (int)(_alembic.Duration * _samplingRate);
+            var frames = Mathf.FloorToInt(_alembic.Duration * _samplingRate) + 1;
             var texSize = GetTextureSize();
             var dt = _alembic.Duration / frames;
 

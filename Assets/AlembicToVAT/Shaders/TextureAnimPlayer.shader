@@ -64,11 +64,10 @@
 				t = frac( _DT / _Length);
 #endif
 				float x = (vid % texWidth) * ts.x;
-				float tsy = 1.0 / (ts.w -0.1);
-				float blockHeihgt = tsy * rowNum;
+				float blockHeihgt = ts.y * rowNum;
 				float baseY = floor(t / blockHeihgt) * blockHeihgt;
-				float rowDiff = floor(vid * ts.x) * tsy;
-				float y = baseY + rowDiff;
+				float rowDiff = floor(vid * ts.x) * ts.y;
+				float y = baseY + rowDiff + (0.5*ts.y) ;
 				float4 pos = tex2Dlod(_PosTex, float4(x, y, 0, 0));
 				float3 normal = tex2Dlod(_NmlTex, float4(x, y, 0, 0));
 
