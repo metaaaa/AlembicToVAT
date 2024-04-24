@@ -5,7 +5,16 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "5228e9116d0bd48f6bb462e4ef293e5c781453e4"
+      "hash": "36ae3facc7527d56990ddfa5194bd0450ac47323"
+    },
+    "com.unity.ai.navigation": {
+      "version": "1.1.4",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.ai": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
     },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
@@ -15,7 +24,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.formats.alembic": {
-      "version": "2.3.0",
+      "version": "2.3.2",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -26,16 +35,16 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.ide.rider": {
-      "version": "1.2.1",
+      "version": "3.0.24",
       "depth": 0,
       "source": "registry",
       "dependencies": {
-        "com.unity.test-framework": "1.1.1"
+        "com.unity.ext.nunit": "1.0.6"
       },
       "url": "https://packages.unity.com"
     },
     "com.unity.ide.visualstudio": {
-      "version": "2.0.11",
+      "version": "2.0.18",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -44,14 +53,14 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.ide.vscode": {
-      "version": "1.2.4",
+      "version": "1.2.5",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
     "com.unity.test-framework": {
-      "version": "1.1.29",
+      "version": "1.1.33",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -62,7 +71,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.textmeshpro": {
-      "version": "2.1.6",
+      "version": "3.0.6",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -71,7 +80,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.timeline": {
-      "version": "1.2.18",
+      "version": "1.7.5",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -224,6 +233,7 @@
       "depth": 0,
       "source": "builtin",
       "dependencies": {
+        "com.unity.modules.ui": "1.0.0",
         "com.unity.modules.imgui": "1.0.0",
         "com.unity.modules.jsonserialize": "1.0.0"
       }
