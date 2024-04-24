@@ -3,11 +3,7 @@ guid: 66d667e0fe2533840aadd8444346b614
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences:
-  - m_ViewDataDictionary: {instanceID: 0}
-  - alembic: {instanceID: 0}
-  - infoTexGen: {fileID: 7200000, guid: 53b7e59c01a098c42aa4bf63d69cc366, type: 3}
-  - playShader: {fileID: 4800000, guid: 4063efef392692c45b6ce0c36b4e4baf, type: 3}
+  defaultReferences: []
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

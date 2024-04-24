@@ -1,15 +1,17 @@
 {
-    "name": "com.metaaaa.alembic-to-vat",
-    "displayName": "AlembicToVat",
-    "version": "1.0.0",
-    "unity": "2019.4",
-    "description": "alembic to vat",
-    "keywords": ["metaaa"],
-    "author": {
-        "name": "metaaa",
-        "url": "https://github.com/metaaaa"
-    },
-    "dependencies": {
-        "com.unity.formats.alembic": "2.3.0"
-    }
+  "name": "com.metaaaa.alembic-to-vat",
+  "displayName": "AlembicToVat",
+  "version": "1.0.0",
+  "unity": "2019.4",
+  "description": "alembic to vat",
+  "keywords": [
+    "metaaa"
+  ],
+  "author": {
+    "name": "metaaa",
+    "url": "https://github.com/metaaaa"
+  },
+  "dependencies": {
+    "com.unity.formats.alembic": "2.3.0"
+  }
 }

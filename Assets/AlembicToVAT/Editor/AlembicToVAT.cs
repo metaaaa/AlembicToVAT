@@ -1,38 +1,39 @@
-﻿namespace AlembicToVAT
-{
-    using System;
-    using System.Linq;
-    using System.Collections.Generic;
-    using UnityEngine;
-    using UnityEditor;
-    using UnityEngine.Formats.Alembic.Importer;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Formats.Alembic.Importer;
+using UnityEngine.Rendering;
 
-    public class AlembicToVAT
+namespace AlembicToVAT
+{
+    public class AlembicToVat
     {
         // Properties
-        private readonly AlembicStreamPlayer _alembic = null;
+        private readonly float _adjustTime = -0.04166667f;
+        private readonly AlembicStreamPlayer _alembic;
+        private readonly ComputeShader _infoTexGen;
+        private readonly MaxTextureWidth _maxTextureWidth = MaxTextureWidth.w8192;
+        private readonly MeshFilter[] _meshFilters;
         private readonly int _samplingRate = 20;
-        private readonly float _adjugstTime = -0.04166667f;
-        private readonly MaxTextureWitdh _maxTextureWitdh = MaxTextureWitdh.w8192;
-        private readonly ComputeShader _infoTexGen = null;
-        private readonly float _startTime = 0f;
-        private readonly MeshFilter[] _meshFilters = null;
+        private readonly float _startTime;
+        private int _maxTriangleCount;
+        private readonly List<MeshPartInfo> _meshParts = new();
+        private int _minTriangleCount = int.MaxValue;
+        private readonly Vector3 _rootScale = Vector3.one;
         private TopologyType _topologyType = TopologyType.Soft;
-        private int _maxTriangleCount = 0;
-        private int _minTriangleCount = Int32.MaxValue;
-        private List<MeshPartInfo> _meshParts = new List<MeshPartInfo>();
-        private Vector3 _rootScale = Vector3.one;
 
-        public AlembicToVAT(AlembicStreamPlayer alembic, MaxTextureWitdh maxTextureWitdh,
-            int samplingRate = 20, float adjugstTime = -0.04166667f)
+        public AlembicToVat(AlembicStreamPlayer alembic, MaxTextureWidth maxTextureWidth,
+            int samplingRate = 20, float adjustTime = -0.04166667f)
         {
             _alembic = alembic;
             _samplingRate = samplingRate;
-            _adjugstTime = adjugstTime;
-            _maxTextureWitdh = maxTextureWitdh;
+            _adjustTime = adjustTime;
+            _maxTextureWidth = maxTextureWidth;
 
             _infoTexGen = (ComputeShader)Resources.Load("AlembicInfoToTexture");
-            _startTime = _alembic.StartTime + _adjugstTime;
+            _startTime = _alembic.StartTime + _adjustTime;
             _meshFilters = _alembic.gameObject.GetComponentsInChildren<MeshFilter>();
 
             _rootScale = _alembic.transform.localScale;
@@ -68,9 +69,9 @@
         private TopologyType GetTopologyType()
         {
             _maxTriangleCount = 0;
-            _minTriangleCount = Int32.MaxValue;
+            _minTriangleCount = int.MaxValue;
 
-            int frames = ((int)(_alembic.Duration * _samplingRate));
+            var frames = (int)(_alembic.Duration * _samplingRate);
             var dt = _alembic.Duration / frames;
 
             for (var frame = 0; frame < frames; frame++)
@@ -82,11 +83,13 @@
                 {
                     triangleCount += meshFilter.sharedMesh.triangles.Length / 3;
                 }
+
                 if (triangleCount > _maxTriangleCount)
                     _maxTriangleCount = triangleCount;
                 if (triangleCount < _minTriangleCount)
                     _minTriangleCount = triangleCount;
             }
+
             var type = _maxTriangleCount == _minTriangleCount ? TopologyType.Soft : TopologyType.Liquid;
             // reset
             _alembic.UpdateImmediately(_startTime);
@@ -96,14 +99,14 @@
         private Mesh BakeMesh()
         {
             var bakedMesh = new Mesh();
-            bakedMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            bakedMesh.indexFormat = IndexFormat.UInt32;
 
             var verticesCount = 0;
             var trianglesIndexCount = 0;
 
-            bool hasNormal = false;
-            bool hasUVs = false;
-            bool hasColors = false;
+            var hasNormal = false;
+            var hasUVs = false;
+            var hasColors = false;
 
             if (_topologyType == TopologyType.Liquid)
             {
@@ -119,9 +122,9 @@
                     verticesCount += sharedMesh.vertices.Length;
                     trianglesIndexCount += sharedMesh.triangles.Length;
 
-                    hasNormal |= (sharedMesh.normals.Length > 0);
-                    hasColors |= (sharedMesh.colors.Length > 0);
-                    hasUVs |= (sharedMesh.uv.Length > 0);
+                    hasNormal |= sharedMesh.normals.Length > 0;
+                    hasColors |= sharedMesh.colors.Length > 0;
+                    hasUVs |= sharedMesh.uv.Length > 0;
                 }
             }
 
@@ -133,7 +136,7 @@
 
             if (_topologyType == TopologyType.Liquid)
             {
-                for (int i = 0; i < verticesCount; i++) // everything is initialized to 0
+                for (var i = 0; i < verticesCount; i++) // everything is initialized to 0
                 {
                     triangles[i] = i;
                     vertices[i] = Vector3.zero;
@@ -142,13 +145,13 @@
             }
             else
             {
-                int currentTrianglesIndex = 0;
-                int verticesOffset = 0;
+                var currentTrianglesIndex = 0;
+                var verticesOffset = 0;
                 foreach (var meshFilter in _meshFilters)
                 {
                     var sharedMesh = meshFilter.sharedMesh;
                     var vertCount = sharedMesh.vertices.Length;
-                    for (int j = 0; j < vertCount; j++)
+                    for (var j = 0; j < vertCount; j++)
                     {
                         if (hasUVs)
                             uv[j + verticesOffset] = sharedMesh.uv[j];
@@ -159,10 +162,8 @@
                     }
 
                     var sharedTriangles = sharedMesh.triangles;
-                    for (int j = 0; j < sharedTriangles.Length; j++)
-                    {
+                    for (var j = 0; j < sharedTriangles.Length; j++)
                         triangles[currentTrianglesIndex++] = sharedTriangles[j] + verticesOffset;
-                    }
 
                     verticesOffset += vertCount;
                 }
@@ -186,15 +187,11 @@
 
         private int GetMaxVertexCount()
         {
-            int maxVertCount = 0;
+            var maxVertCount = 0;
             if (_topologyType == TopologyType.Liquid)
-            {
                 maxVertCount = _maxTriangleCount * 3;
-            }
             else
-            {
                 maxVertCount = _meshFilters.Select(x => x.sharedMesh.vertexCount).Sum();
-            }
 
             return maxVertCount;
         }
@@ -202,21 +199,18 @@
         private Vector2Int GetTextureSize()
         {
             var size = new Vector2Int();
-            int maxVertCount = GetMaxVertexCount();
+            var maxVertCount = GetMaxVertexCount();
 
-            int maxTextureWitdh = (int)this._maxTextureWitdh;
+            var maxTextureWidth = (int)_maxTextureWidth;
 
             var x = Mathf.NextPowerOfTwo(maxVertCount);
-            x = x > maxTextureWitdh ? maxTextureWitdh : x;
-            var blockSize = ((int)((maxVertCount - 0.1f) / maxTextureWitdh) + 1);
+            x = x > maxTextureWidth ? maxTextureWidth : x;
+            var blockSize = (int)((maxVertCount - 0.1f) / maxTextureWidth) + 1;
             var frames = Mathf.FloorToInt(_alembic.Duration * _samplingRate) + 1;
             var y = frames * blockSize;
             size.x = x;
             size.y = y;
-            if (y > maxTextureWitdh)
-            {
-                Debug.LogError("data size over");
-            }
+            if (y > maxTextureWidth) Debug.LogError("data size over");
             return size;
         }
 
@@ -240,12 +234,11 @@
             }
 
             var infoList = new List<VertInfo>(texSize.y * maxVertCount);
-            float progress = 0f;
             for (var frame = 0; frame <= frames; frame++)
             {
-                progress = (float)frame / (float)frames;
-                string progressText = ((frame % 2) == 0) ? "processing ₍₍(ง˘ω˘)ว⁾⁾" : "processing ₍₍(ว˘ω˘)ง⁾⁾";
-                bool isCancel = EditorUtility.DisplayCancelableProgressBar("AlembicToVAT", progressText, progress);
+                var progress = frame / (float)frames;
+                var progressText = frame % 2 == 0 ? "processing ₍₍(ง˘ω˘)ว⁾⁾" : "processing ₍₍(ว˘ω˘)ง⁾⁾";
+                var isCancel = EditorUtility.DisplayCancelableProgressBar("AlembicToVAT", progressText, progress);
                 _alembic.UpdateImmediately(_startTime + dt * frame);
                 infoList.AddRange(GetVertInfos(maxVertCount));
 
@@ -264,22 +257,19 @@
                 minBounds = Vector3.Min(minBounds, info.position);
                 maxBounds = Vector3.Max(maxBounds, info.position);
             }
+
             if (minBounds.magnitude < maxBounds.magnitude)
-            {
                 minBounds = maxBounds * -1;
-            }
             else
-            {
                 maxBounds = minBounds * -1;
-            }
             maxBounds = Vector3.Scale(maxBounds, _rootScale);
             minBounds = Vector3.Scale(minBounds, _rootScale);
-            mesh.bounds = new Bounds() { max = maxBounds, min = minBounds };
+            mesh.bounds = new Bounds { max = maxBounds, min = minBounds };
 
-            var buffer = new ComputeBuffer(infoList.Count, System.Runtime.InteropServices.Marshal.SizeOf(typeof(VertInfo)));
+            var buffer = new ComputeBuffer(infoList.Count, Marshal.SizeOf(typeof(VertInfo)));
             buffer.SetData(infoList.ToArray());
 
-            int rows = (maxVertCount - 1) / texSize.x + 1;
+            var rows = (maxVertCount - 1) / texSize.x + 1;
 
             var kernel = _infoTexGen.FindKernel("CSMain");
             uint x, y, z;
@@ -291,7 +281,8 @@
             _infoTexGen.SetBuffer(kernel, "Info", buffer);
             _infoTexGen.SetTexture(kernel, "OutPosition", pRt);
             _infoTexGen.SetTexture(kernel, "OutNormal", nRt);
-            _infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1), frames * rows + 1, 1);
+            _infoTexGen.Dispatch(kernel, Mathf.Clamp(maxVertCount / (int)x + 1, 1, texSize.x / (int)x + 1),
+                frames * rows + 1, 1);
 
             buffer.Release();
 
@@ -325,9 +316,9 @@
                     var meshParentTrans = meshPart.parentTrans;
                     var meshParentLocalScale = meshParentTrans.localScale;
                     var meshVerts = mesh.vertices
-                                    .Select(x => Vector3.Scale(x, meshParentTrans.localScale))
-                                    .Select(x => meshParentTrans.localRotation * x)
-                                    .Select(x => meshParentTrans.localPosition + x);
+                        .Select(x => Vector3.Scale(x, meshParentTrans.localScale))
+                        .Select(x => meshParentTrans.localRotation * x)
+                        .Select(x => meshParentTrans.localPosition + x);
                     var meshNorms = mesh.normals.Select(x => meshParentTrans.localRotation * x);
                     vertices.AddRange(meshVerts);
                     normals.AddRange(meshNorms);
@@ -339,7 +330,7 @@
                         var pos = idx < vertices.Count ? vertices[idx] : Vector3.zero;
                         var norm = idx < normals.Count ? normals[idx] : Vector3.zero;
 
-                        return new VertInfo()
+                        return new VertInfo
                         {
                             position = pos,
                             normal = norm
@@ -365,7 +356,7 @@
                         var pos = idx < vertices.Count ? vertices[idx] : Vector3.zero;
                         var norm = idx < normals.Count ? normals[idx] : Vector3.zero;
 
-                        return new VertInfo()
+                        return new VertInfo
                         {
                             position = pos,
                             normal = norm
@@ -398,7 +389,7 @@
                     break;
                 default:
                     format = TextureFormat.ARGB32;
-                    Debug.LogWarning("Unsuported RenderTextureFormat.");
+                    Debug.LogWarning("Unsupported RenderTextureFormat.");
                     break;
             }
 

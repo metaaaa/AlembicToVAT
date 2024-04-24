@@ -1,8 +1,8 @@
-﻿namespace AlembicToVAT
-{
-    using UnityEngine;
+﻿using UnityEngine;
 
-    public enum MaxTextureWitdh
+namespace AlembicToVAT
+{
+    public enum MaxTextureWidth
     {
         w32 = 32,
         w64 = 64,
@@ -18,7 +18,7 @@
     public enum TopologyType
     {
         Soft,
-        Liquid,
+        Liquid
     }
 
     public struct VertInfo
@@ -35,10 +35,10 @@
 
     public class ConvertResult
     {
-        public readonly Texture2D posTex;
-        public readonly Texture2D normTex;
         public readonly Texture mainTex;
         public readonly Mesh mesh;
+        public readonly Texture2D normTex;
+        public readonly Texture2D posTex;
         public readonly TopologyType topologyType;
 
         public ConvertResult(Texture2D posTex, Texture2D normTex,
@@ -51,5 +51,4 @@
             this.topologyType = topologyType;
         }
     }
-
 }

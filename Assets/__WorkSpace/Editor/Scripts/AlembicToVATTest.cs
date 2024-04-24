@@ -6,6 +6,7 @@ using UnityEngine.Formats.Alembic.Importer;
 using AlembicToVAT;
 using System.IO;
 using System;
+using UnityEngine.Serialization;
 
 public class AlembicToVATTest : ScriptableWizard
 {
@@ -14,7 +15,7 @@ public class AlembicToVATTest : ScriptableWizard
     public float posOffset = 5;
     public int samplingRate = 20;
     public float adjugstTime = -0.04166667f;
-    public MaxTextureWitdh maxTextureWitdh = MaxTextureWitdh.w8192;
+    [FormerlySerializedAs("maxTextureWitdh")] public MaxTextureWidth maxTextureWidth = MaxTextureWidth.w8192;
     public string folderName = "Results";
     public string shaderName = "AlembicToVAT/TextureAnimPlayer";
     private Shader _playShader = null;
@@ -45,7 +46,7 @@ public class AlembicToVATTest : ScriptableWizard
         for (int i = 0; i < alembics.Count; i++)
         {
             _alembic = alembics[i];
-            var alembicToVat = new AlembicToVAT.AlembicToVAT(_alembic, maxTextureWitdh, samplingRate, adjugstTime);
+            var alembicToVat = new AlembicToVAT.AlembicToVat(_alembic, maxTextureWidth, samplingRate, adjugstTime);
             var result = alembicToVat.Exec();
             if (result == null) return;
 
