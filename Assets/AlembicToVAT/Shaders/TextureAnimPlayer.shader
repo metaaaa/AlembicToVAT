@@ -10,6 +10,7 @@
 		_VertCount ("VertCount", Int) = 1
 		[Toggle(ANIM_LOOP)] _Loop("loop", Float) = 1
 		[Toggle(IS_FLUID)] _IsFluid("IsFluid", Float) = 0
+		[Toggle(AlphaIsNormal)] _AlphaIsNormal("AlphaIsNormal", Float) = 0
 		[Enum(UnityEngine.Rendering.CullMode)]
 		_Cull("Cull", Float) = 2
 	}
@@ -50,8 +51,18 @@
 
 			sampler2D _MainTex, _PosTex, _NmlTex;
 			float4 _PosTex_TexelSize;
-			float _Length, _DT;
+			float _Length, _DT, _AlphaIsNormal;
 			int _VertCount;
+			
+
+			float3 i_spherical_16(half data)
+            {
+                uint d = data;
+                float2 v = float2(d & 255u, d >> 8) / 255.0;
+                v.x = 2.0 * v.x - 1.0;
+                v *= 3.141593;
+                return normalize(float3(sin(v.y) * cos(v.x), cos(v.y), sin(v.y) * sin(v.x)));
+            }
 			
 			v2f vert (appdata v, uint vid : SV_VertexID)
 			{
@@ -68,14 +79,15 @@
 				float baseY = floor(t / blockHeihgt) * blockHeihgt;
 				float rowDiff = floor(vid * ts.x) * ts.y;
 				float y = baseY + rowDiff + (0.5*ts.y) ;
-				float4 pos = tex2Dlod(_PosTex, float4(x, y, 0, 0));
-				float3 normal = tex2Dlod(_NmlTex, float4(x, y, 0, 0));
+				half4 pos = tex2Dlod(_PosTex, float4(x, y, 0, 0));
+				// float3 normal = tex2Dlod(_NmlTex, float4(x, y, 0, 0));
+				float3 normal = _AlphaIsNormal ? i_spherical_16(pos.a) : tex2Dlod(_NmlTex, float4(x, y, 0, 0));
 
 #ifdef IS_FLUID
 #else
 				float nextY = (y - rowDiff + blockHeihgt >= 1.0) ? y : y + blockHeihgt;
 				float4 pos2 = tex2Dlod(_PosTex, float4(x, nextY, 0, 0));
-				float3 normal2 = tex2Dlod(_NmlTex, float4(x, nextY, 0, 0));
+				float3 normal2 = _AlphaIsNormal ? i_spherical_16(pos2.a) : tex2Dlod(_NmlTex, float4(x, nextY, 0, 0));
 
 				float p = fmod(t, blockHeihgt) / blockHeihgt;
 				pos = lerp(pos, pos2, p);

@@ -78,7 +78,7 @@ namespace AlembicToVAT
             // validate
             if (!InputValidate()) return;
 
-            var alembicToVat = new AlembicToVat(_alembic, _maxTextureWidth, _samplingRate, _adjustTime);
+            var alembicToVat = new AlembicToVat(_alembic, _maxTextureWidth, _samplingRate, _adjustTime, _packNormalsIntoAlpha);
             var result = alembicToVat.Exec();
             if (result == null) return;
 

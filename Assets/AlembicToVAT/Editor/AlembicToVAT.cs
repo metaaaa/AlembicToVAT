@@ -463,10 +463,11 @@ namespace AlembicToVAT
             var mat = new Material(playShader);
             mat.SetTexture("_MainTex", mainTex);
             mat.SetTexture("_PosTex", posTex);
-            mat.SetTexture("_NmlTex", normTex);
+            if(!_packNormalsIntoAlpha) mat.SetTexture("_NmlTex", normTex);
             mat.SetFloat("_Length", _alembic.Duration);
             mat.SetInt("_VertCount", mesh.vertexCount);
             mat.SetFloat("_IsFluid", Convert.ToInt32(topologyType == TopologyType.Liquid));
+            mat.SetFloat("_AlphaIsNormal", Convert.ToInt32(_packNormalsIntoAlpha));
             if (topologyType == TopologyType.Liquid)
                 mat.EnableKeyword("IS_FLUID");
             else
