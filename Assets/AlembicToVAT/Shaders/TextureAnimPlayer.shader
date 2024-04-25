@@ -61,7 +61,7 @@
                 float2 v = float2(d & 255u, d >> 8) / 255.0;
                 v.x = 2.0 * v.x - 1.0;
                 v *= 3.141593;
-                return normalize(float3(sin(v.y) * cos(v.x), cos(v.y), sin(v.y) * sin(v.x)));
+                return float3(sin(v.y) * cos(v.x), cos(v.y), sin(v.y) * sin(v.x));
             }
 			
 			v2f vert (appdata v, uint vid : SV_VertexID)
