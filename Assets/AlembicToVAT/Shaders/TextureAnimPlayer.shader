@@ -44,7 +44,7 @@
 				float2 uv : TEXCOORD0;
 				float3 normal : TEXCOORD1;
 				float4 vertex : SV_POSITION;
-
+				UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
 			};
 
@@ -94,6 +94,7 @@
 			
 			half4 frag (v2f i) : SV_Target
 			{
+				UNITY_SETUP_INSTANCE_ID(i);
 				half diff = dot(i.normal, float3(0,1,0))*0.5 + 0.5;
 				half4 col = tex2D(_MainTex, i.uv);
 				return diff * col;

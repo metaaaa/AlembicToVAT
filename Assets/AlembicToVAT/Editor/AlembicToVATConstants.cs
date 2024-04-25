@@ -35,20 +35,10 @@ namespace AlembicToVAT
 
     public class ConvertResult
     {
-        public readonly Texture mainTex;
-        public readonly Mesh mesh;
-        public readonly Texture2D normTex;
-        public readonly Texture2D posTex;
-        public readonly TopologyType topologyType;
-
-        public ConvertResult(Texture2D posTex, Texture2D normTex,
-            Texture mainTex, Mesh mesh, TopologyType topologyType)
-        {
-            this.posTex = posTex;
-            this.normTex = normTex;
-            this.mainTex = mainTex;
-            this.mesh = mesh;
-            this.topologyType = topologyType;
-        }
+        public Texture mainTex;
+        public Mesh mesh;
+        public Texture2D normTex;
+        public Texture2D posTex;
+        public TopologyType topologyType;
     }
 }

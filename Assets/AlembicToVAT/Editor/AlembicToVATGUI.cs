@@ -1,8 +1,9 @@
 ﻿using System;
-using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Formats.Alembic.Importer;
+using UnityEngine.SceneManagement;
 
 namespace AlembicToVAT
 {
@@ -19,6 +20,8 @@ namespace AlembicToVAT
         private Shader _playShader;
         private int _samplingRate = 20;
         private string _shaderName = "AlembicToVAT/TextureAnimPlayer";
+        private bool _packNormalsIntoAlpha = false;	
+
 
         private void OnGUI()
         {
@@ -29,6 +32,7 @@ namespace AlembicToVAT
                 _samplingRate = EditorGUILayout.IntField("samplingRate", _samplingRate);
                 _adjustTime = EditorGUILayout.FloatField("adjustTime", _adjustTime);
                 _maxTextureWidth = (MaxTextureWidth)EditorGUILayout.EnumPopup("maxTextureWidth", _maxTextureWidth);
+                _packNormalsIntoAlpha = EditorGUILayout.Toggle("packNormalsIntoAlpha", _packNormalsIntoAlpha);
                 var folderName = EditorGUILayout.TextField("folderName", _folderName);
                 if (folderName != _folderName)
                 {
@@ -45,8 +49,9 @@ namespace AlembicToVAT
 
                 if (GUILayout.Button("process")) Make();
             }
-            catch (FormatException)
+            catch (FormatException e)
             {
+                Debug.LogError(e);
             }
         }
 
@@ -78,7 +83,8 @@ namespace AlembicToVAT
             if (result == null) return;
 
             // create assets
-            SaveAssets(result);
+            alembicToVat.SaveAssets(result, _playShader, _folderName);
+            EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
         }
 
         private bool InputValidate()
@@ -97,68 +103,6 @@ namespace AlembicToVAT
             }
 
             return valid;
-        }
-
-
-        private string InitializeFolder()
-        {
-            var folderPath = Path.Combine("Assets", _folderName);
-            if (!AssetDatabase.IsValidFolder(folderPath))
-            {
-                var folderNameSplit = _folderName.Split('/');
-                var prevPath = "Assets";
-                foreach (var item in folderNameSplit)
-                {
-                    var tmpPath = Path.Combine(prevPath, item);
-                    if (!AssetDatabase.IsValidFolder(tmpPath)) AssetDatabase.CreateFolder(prevPath, item);
-                    prevPath = tmpPath;
-                }
-            }
-
-            var subFolder = _alembic.gameObject.name;
-            var path = Path.Combine(folderPath, subFolder);
-            if (!AssetDatabase.IsValidFolder(path))
-                AssetDatabase.CreateFolder(folderPath, subFolder);
-            return path;
-        }
-
-        private void SaveAssets(ConvertResult result)
-        {
-            var posTex = result.posTex;
-            var normTex = result.normTex;
-            var mainTex = result.mainTex;
-            var mesh = result.mesh;
-            var topologyType = result.topologyType;
-            var path = InitializeFolder();
-
-            AssetDatabase.CreateAsset(posTex, Path.Combine(path, posTex.name + ".asset"));
-            AssetDatabase.CreateAsset(normTex, Path.Combine(path, normTex.name + ".asset"));
-            AssetDatabase.CreateAsset(mesh,
-                Path.Combine(path, string.Format("{0}_mesh.asset", _alembic.gameObject.name)));
-
-            var mat = new Material(_playShader);
-            mat.SetTexture("_MainTex", mainTex);
-            mat.SetTexture("_PosTex", posTex);
-            mat.SetTexture("_NmlTex", normTex);
-            mat.SetFloat("_Length", _alembic.Duration);
-            mat.SetInt("_VertCount", mesh.vertexCount);
-            mat.SetFloat("_IsFluid", Convert.ToInt32(topologyType == TopologyType.Liquid));
-            if (topologyType == TopologyType.Liquid)
-                mat.EnableKeyword("IS_FLUID");
-            else
-                mat.DisableKeyword("IS_FLUID");
-
-            var go = new GameObject(_alembic.gameObject.name);
-            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-
-            AssetDatabase.CreateAsset(mat,
-                Path.Combine(path, string.Format("{0}_mat.asset", _alembic.gameObject.name)));
-            PrefabUtility.SaveAsPrefabAssetAndConnect(go,
-                Path.Combine(path, go.name + ".prefab").Replace("\\", "/"), InteractionMode.UserAction);
-
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
         }
     }
 }

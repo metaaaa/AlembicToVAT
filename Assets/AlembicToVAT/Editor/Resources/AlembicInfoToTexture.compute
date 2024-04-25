@@ -12,6 +12,14 @@ StructuredBuffer<MeshInfo> Info;
 uint MaxVertexCount;
 uint TextureWidth;
 float3 RootScale;
+bool PackNormalsIntoAlpha;
+
+half spherical_16(float3 nor)
+{
+	float2 v = float2(0.5 + 0.5 * atan2(nor.z, nor.x) / 3.141593, acos(nor.y) / 3.141593);
+	uint2 d = uint2(round(v * 255.0));
+	return d.x | (d.y << 8u);
+}
 
 [numthreads(8,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -23,6 +31,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 	MeshInfo info = Info[index];
 
-	OutPosition[id.xy] = float4(info.position * RootScale, 1.0);
+	half posAlpha = PackNormalsIntoAlpha ? spherical_16(info.normal) : 1.0;
+
+	OutPosition[id.xy] = float4(info.position * RootScale, posAlpha);
 	OutNormal[id.xy] = float4(info.normal, 1.0);
 }
+

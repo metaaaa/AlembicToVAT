@@ -1,23 +1,27 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Formats.Alembic.Importer;
 using UnityEngine.Rendering;
+using Object = UnityEngine.Object;
 
 namespace AlembicToVAT
 {
     public class AlembicToVat
     {
         // Properties
-        private readonly float _adjustTime = -0.04166667f;
+        private readonly float _adjustTime;
         private readonly AlembicStreamPlayer _alembic;
         private readonly ComputeShader _infoTexGen;
         private readonly MaxTextureWidth _maxTextureWidth = MaxTextureWidth.w8192;
         private readonly MeshFilter[] _meshFilters;
         private readonly int _samplingRate = 20;
         private readonly float _startTime;
+        private readonly bool _packNormalsIntoAlpha;
         private int _maxTriangleCount;
         private readonly List<MeshPartInfo> _meshParts = new();
         private int _minTriangleCount = int.MaxValue;
@@ -25,12 +29,13 @@ namespace AlembicToVAT
         private TopologyType _topologyType = TopologyType.Soft;
 
         public AlembicToVat(AlembicStreamPlayer alembic, MaxTextureWidth maxTextureWidth,
-            int samplingRate = 20, float adjustTime = -0.04166667f)
+            int samplingRate = 20, float adjustTime = -0.04166667f, bool packNormalsIntoAlpha = false)
         {
             _alembic = alembic;
             _samplingRate = samplingRate;
             _adjustTime = adjustTime;
             _maxTextureWidth = maxTextureWidth;
+            _packNormalsIntoAlpha = packNormalsIntoAlpha;
 
             _infoTexGen = (ComputeShader)Resources.Load("AlembicInfoToTexture");
             _startTime = _alembic.StartTime + _adjustTime;
@@ -40,9 +45,12 @@ namespace AlembicToVAT
 
             foreach (var meshFilter in _meshFilters)
             {
-                var meshPart = new MeshPartInfo();
-                meshPart.meshFilter = meshFilter;
-                meshPart.parentTrans = meshFilter.gameObject.transform.parent;
+                var meshPart = new MeshPartInfo
+                {
+                    meshFilter = meshFilter,
+                    parentTrans = meshFilter.gameObject.transform.parent
+                };
+
                 _meshParts.Add(meshPart);
             }
         }
@@ -63,7 +71,14 @@ namespace AlembicToVAT
 
             var mainTex = _meshFilters.First().gameObject.GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
 
-            return new ConvertResult(texTuple.posTex, texTuple.normTex, mainTex, mesh, _topologyType);
+            return new ConvertResult
+            {
+                posTex = texTuple.posTex,
+                normTex = texTuple.normTex,
+                mainTex = mainTex,
+                mesh = mesh,
+                topologyType = _topologyType
+            };
         }
 
         private TopologyType GetTopologyType()
@@ -220,11 +235,16 @@ namespace AlembicToVAT
             var frames = Mathf.FloorToInt(_alembic.Duration * _samplingRate) + 1;
             var texSize = GetTextureSize();
             var dt = _alembic.Duration / frames;
+            var alembicName = _alembic.gameObject.name;
 
-            var pRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf);
-            pRt.name = string.Format("{0}.posTex", _alembic.gameObject.name);
-            var nRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf);
-            nRt.name = string.Format("{0}.normTex", _alembic.gameObject.name);
+            var pRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf)
+            {
+                name = $"{alembicName}.posTex",
+            };
+            var nRt = new RenderTexture(texSize.x, texSize.y, 0, RenderTextureFormat.ARGBHalf)
+            {
+                name = $"{alembicName}.normTex",
+            };
             foreach (var rt in new[] { pRt, nRt })
             {
                 rt.enableRandomWrite = true;
@@ -272,11 +292,11 @@ namespace AlembicToVAT
             var rows = (maxVertCount - 1) / texSize.x + 1;
 
             var kernel = _infoTexGen.FindKernel("CSMain");
-            uint x, y, z;
-            _infoTexGen.GetKernelThreadGroupSizes(kernel, out x, out y, out z);
+            _infoTexGen.GetKernelThreadGroupSizes(kernel, out var x, out var y, out var z);
 
             _infoTexGen.SetInt("MaxVertexCount", maxVertCount);
             _infoTexGen.SetInt("TextureWidth", texSize.x);
+            _infoTexGen.SetBool("PackNormalsIntoAlpha", _packNormalsIntoAlpha);
             _infoTexGen.SetVector("RootScale", _rootScale);
             _infoTexGen.SetBuffer(kernel, "Info", buffer);
             _infoTexGen.SetTexture(kernel, "OutPosition", pRt);
@@ -290,6 +310,9 @@ namespace AlembicToVAT
             var normTex = RenderTextureToTexture2D(nRt);
             Graphics.CopyTexture(pRt, posTex);
             Graphics.CopyTexture(nRt, normTex);
+
+            Object.DestroyImmediate(pRt);
+            Object.DestroyImmediate(nRt);
 
             posTex.filterMode = FilterMode.Point;
             normTex.filterMode = FilterMode.Point;
@@ -400,6 +423,68 @@ namespace AlembicToVAT
             RenderTexture.active = null;
             tex2d.name = rt.name;
             return tex2d;
+        }
+        
+        private string InitializeFolder(string folderName)
+        {
+            var folderPath = Path.Combine("Assets", folderName);
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                var folderNameSplit = folderName.Split('/');
+                var prevPath = "Assets";
+                foreach (var item in folderNameSplit)
+                {
+                    var tmpPath = Path.Combine(prevPath, item);
+                    if (!AssetDatabase.IsValidFolder(tmpPath)) AssetDatabase.CreateFolder(prevPath, item);
+                    prevPath = tmpPath;
+                }
+            }
+
+            var subFolder = _alembic.gameObject.name;
+            var path = Path.Combine(folderPath, subFolder);
+            if (!AssetDatabase.IsValidFolder(path))
+                AssetDatabase.CreateFolder(folderPath, subFolder);
+            return path;
+        }
+
+        public GameObject SaveAssets(ConvertResult result, Shader playShader, string folderName)
+        {
+            var posTex = result.posTex;
+            var normTex = result.normTex;
+            var mainTex = result.mainTex;
+            var mesh = result.mesh;
+            var topologyType = result.topologyType;
+            var path = InitializeFolder(folderName);
+
+            AssetDatabase.CreateAsset(posTex, Path.Combine(path, posTex.name + ".asset"));
+            AssetDatabase.CreateAsset(normTex, Path.Combine(path, normTex.name + ".asset"));
+            AssetDatabase.CreateAsset(mesh, Path.Combine(path, $"{_alembic.gameObject.name}_mesh.asset"));
+
+            var mat = new Material(playShader);
+            mat.SetTexture("_MainTex", mainTex);
+            mat.SetTexture("_PosTex", posTex);
+            mat.SetTexture("_NmlTex", normTex);
+            mat.SetFloat("_Length", _alembic.Duration);
+            mat.SetInt("_VertCount", mesh.vertexCount);
+            mat.SetFloat("_IsFluid", Convert.ToInt32(topologyType == TopologyType.Liquid));
+            if (topologyType == TopologyType.Liquid)
+                mat.EnableKeyword("IS_FLUID");
+            else
+                mat.DisableKeyword("IS_FLUID");
+
+            var go = new GameObject(_alembic.gameObject.name);
+            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+
+            AssetDatabase.CreateAsset(mat,
+                Path.Combine(path, $"{_alembic.gameObject.name}_mat.asset"));
+            PrefabUtility.SaveAsPrefabAssetAndConnect(go,
+                Path.Combine(path, go.name + ".prefab").Replace("\\", "/"), InteractionMode.UserAction);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            return go;
         }
     }
 }
